@@ -88,28 +88,6 @@ const ok = await verifySecp256k1Signature(
 );
 ```
 
-### 服务端中间件（Express）
-
-```bash
-bun run ex:server
-# 默认端口 8080，/public 与 /api/profile 可用于验证
-```
-
-示例片段：
-
-```ts
-import express from "express";
-import { anpMiddleware } from "@/anp_auth/middleware/express";
-import { Verifier } from "@/anp_auth/verifier";
-
-const app = express();
-const verifier = new Verifier({ jwtSecret: "dev-secret" });
-app.get("/public", (_req, res) => res.json({ ok: true }));
-app.use(anpMiddleware(verifier));
-app.get("/api/profile", (req: any, res) => res.json({ did: req.did }));
-app.listen(8080);
-```
-
 ### 客户端请求（带认证）
 
 ```bash
@@ -129,6 +107,17 @@ const resp = await defaultHttpClient.request(url, "GET", {
 });
 ```
 
+### 数据校验（Ajv）
+
+```ts
+import { ap2_validation } from "anp-ts";
+
+const result = ap2_validation.validateCartMandate(payload);
+if (!result.valid) {
+  console.error("Cart mandate invalid", result.errors);
+}
+```
+
 ### Crawler（amap 示例）
 
 ```bash
@@ -140,11 +129,12 @@ bun run ex:crawler
 示例片段：
 
 ```ts
-import { createCrawler } from "@/anp_crawler/anp_client";
+import { crawler } from "anp-ts";
 
-const crawler = createCrawler();
 const spec = await crawler.fetchInterface(process.env.INTERFACE_URL!);
-spec.endpoints.forEach((e) => console.log(e.method, e.path));
+spec.endpoints.forEach((endpoint) =>
+  console.log(endpoint.method, endpoint.path)
+);
 ```
 
 ## 代码要点
@@ -158,5 +148,5 @@ spec.endpoints.forEach((e) => console.log(e.method, e.path));
 
 - 认证与验签：noble + JCS
 - 私钥解析：仅 PKCS#8（BEGIN PRIVATE KEY）
-- HTTP：axios 封装（默认客户端与可配置工厂）
+- HTTP：原生 fetch 封装（默认客户端与可配置工厂）
 - Schema：Zod 校验（顶层宽松、字段严格）

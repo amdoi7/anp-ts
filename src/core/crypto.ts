@@ -1,5 +1,5 @@
 import { secp256k1 } from "@noble/curves/secp256k1.js";
-import { sha256 as nobleSha256 } from "@noble/hashes/sha256";
+import { sha256 as coreSha256 } from "@/core/hash.js";
 import { base64urlDecode, base64urlEncode } from "@/core/utils.js";
 
 export interface KeyPair {
@@ -31,7 +31,7 @@ export async function signSecp256k1(
 }
 
 export function sha256(data: Uint8Array): Uint8Array {
-  return nobleSha256(data);
+  return coreSha256(data);
 }
 
 // Note: If DER parsing is needed, prefer noble:
@@ -78,7 +78,6 @@ function readASN1Length(buf: Uint8Array, offset: number): { length: number; next
 }
 
 export function importSecp256k1PrivateKeyFromPem(pem: string): JsonWebKey {
-  // PKCS#8 ONLY: -----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----
   if (!/-----BEGIN PRIVATE KEY-----/.test(pem)) {
     throw new Error("Only PKCS#8 'BEGIN PRIVATE KEY' is supported");
   }

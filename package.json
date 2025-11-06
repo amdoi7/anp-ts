@@ -6,20 +6,19 @@
   "main": "dist/index.js",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "bun": "./src/index.ts"
     }
   },
   "scripts": {
-    "build": "bun build",
-    "test": "bun test",
-    "clean": "rm -rf dist",
-    "ex:basic": "bun run examples/identity/basic_header.ts",
-    "ex:client": "bun run examples/transport_client.ts",
-    "ex:server": "bun run examples/middleware_server.ts",
+    "prebuild": "rm -rf dist",
+    "build": "rollup -c",
     "ex:crawler": "bun run examples/crawler/fetch_interface.ts",
-    "ex:did:gen": "bun run examples/did_public/generate.ts",
-    "ex:verify:doc": "bun run examples/identity/verify_with_doc.ts"
+    "ex:ap2:cart": "bun run examples/ap2/cart_mandate_flow.ts",
+    "ex:ap2:payment": "bun run examples/ap2/payment_mandate_flow.ts",
+    "test": "bun test",
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "did",
@@ -30,18 +29,24 @@
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "bun-types": "latest"
+    "@rollup/plugin-alias": "^6.0.0",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "bun-types": "latest",
+    "depcheck": "^1.4.7",
+    "rollup": "^4.52.5",
+    "rollup-plugin-dts": "^6.2.3",
+    "rollup-plugin-esbuild": "^6.2.1"
   },
   "dependencies": {
     "@noble/curves": "2.0.1",
     "@noble/hashes": "^2.0.1",
-    "axios": "^1.7.7",
-    "json5": "^2.2.3",
+    "ajv": "^8.17.1",
     "canonicalize": "^2.1.0",
-    "express": "^5.1.0",
     "jose": "^6.1.0",
     "lru-cache": "^11.2.2",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "zod-to-json-schema": "^3.24.6"
   }
 }
