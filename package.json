@@ -1,0 +1,47 @@
+{
+  "name": "anp-ts",
+  "version": "0.0.1",
+  "description": "TypeScript SDK for DID-WBA authentication (language migration of anp-go)",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build",
+    "test": "bun test",
+    "clean": "rm -rf dist",
+    "ex:basic": "bun run examples/identity/basic_header.ts",
+    "ex:client": "bun run examples/transport_client.ts",
+    "ex:server": "bun run examples/middleware_server.ts",
+    "ex:crawler": "bun run examples/crawler/fetch_interface.ts",
+    "ex:did:gen": "bun run examples/did_public/generate.ts",
+    "ex:verify:doc": "bun run examples/identity/verify_with_doc.ts"
+  },
+  "keywords": [
+    "did",
+    "wba",
+    "authentication",
+    "anp"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "bun-types": "latest"
+  },
+  "dependencies": {
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "axios": "^1.7.7",
+    "json5": "^2.2.3",
+    "canonicalize": "^2.1.0",
+    "express": "^5.1.0",
+    "jose": "^6.1.0",
+    "lru-cache": "^11.2.2",
+    "zod": "^4.1.12"
+  }
+}

@@ -1,0 +1,7 @@
+[build]
+entrypoints = ["src/index.ts"]
+outdir = "dist"
+target = "node"
+minify = true
+sourcemap = true
+external = ["@noble/curves", "jose", "lru-cache"]
