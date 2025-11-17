@@ -11,6 +11,15 @@ export interface HttpClient {
   request<T = unknown>(url: string, method: HttpMethod, options?: HttpRequestOptions): Promise<{ status: number; headers: Record<string, string>; data: T }>;
 }
 
+/**
+ * Platform-independent fetch function type
+ * Compatible with standard Fetch API
+ */
+export type FetchLike = (
+  url: string | URL,
+  options?: RequestInit
+) => Promise<Response>;
+
 export interface FetchHttpClientConfig {
   /** Optional base URL used when requests provide relative paths. */
   baseUrl?: string;
@@ -18,8 +27,15 @@ export interface FetchHttpClientConfig {
   defaultHeaders?: Record<string, string>;
   /** Default timeout in milliseconds applied when a request omits one. */
   timeoutMs?: number;
-  /** Custom fetch implementation for environments without a global fetch. */
-  fetchImplementation?: typeof fetch;
+  /**
+   * Custom fetch implementation for environments without a global fetch.
+   * If not provided, will try to use globalThis.fetch.
+   * @example
+   * // Node.js < 18
+   * import fetch from 'node-fetch';
+   * const client = createHttpClient({ fetchImpl: fetch });
+   */
+  fetchImpl?: FetchLike;
 }
 
 function buildUrl(baseUrl: string | undefined, url: string, query?: Record<string, string | number | boolean | undefined>): string {
@@ -91,12 +107,18 @@ async function parseResponseBody<T>(response: Response, method: HttpMethod): Pro
 }
 
 class FetchHttpClient implements HttpClient {
-  constructor(private readonly config: FetchHttpClientConfig = {}) {}
+  constructor(private readonly config: FetchHttpClientConfig = {}) { }
 
   async request<T = unknown>(url: string, method: HttpMethod, options: HttpRequestOptions = {}): Promise<{ status: number; headers: Record<string, string>; data: T }> {
-    const fetchImpl = this.config.fetchImplementation ?? globalThis.fetch;
+    // Try user-provided fetch, then globalThis.fetch
+    const fetchImpl = this.config.fetchImpl ?? (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : undefined);
+
     if (typeof fetchImpl !== "function") {
-      throw new Error("fetch is not available in this environment. Provide a fetchImplementation via FetchHttpClientConfig.");
+      throw new Error(
+        "Fetch API is not available in this environment. " +
+        "Please provide a fetch implementation via fetchImpl option.\n" +
+        "Example for Node.js <18: import fetch from 'node-fetch'; createHttpClient({ fetchImpl: fetch })"
+      );
     }
 
     const timeoutMs = options.timeoutMs ?? this.config.timeoutMs;

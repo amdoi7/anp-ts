@@ -1,118 +1,76 @@
-import { crawler, Authenticator, did, crypto } from "anp-ts";
-import { defaultHttpClient } from "@/core/http.js";
-import { LogManager, ConsoleLogger } from "@/core/logging.js";
+/**
+ * Example: Fetch ANP Interface
+ * 
+ * Simple example showing how to fetch and parse ANP interface definitions.
+ * Uses the new simplified API.
+ * 
+ * Run: bun run example:crawler
+ */
+
+import { createCrawler } from "../../src/crawler/index.js";
 
 async function main() {
-  // Initialize a logger for the example, set to debug level
-  const logger = new LogManager(new ConsoleLogger(), "debug");
+  console.log("=".repeat(60));
+  console.log("  ANP Interface Crawler");
+  console.log("=".repeat(60));
+  console.log();
 
-  const DOC_URL = process.env.DOC_URL || "https://agent-connect.ai/mcp/agents/amap/ad.json";
-  const INTERFACE_URL = process.env.INTERFACE_URL || "https://agent-connect.ai/mcp/agents/api/amap.json";
-  const JSONRPC_ENDPOINT = process.env.JSONRPC_ENDPOINT || "https://agent-connect.ai/mcp/agents/tools/amap";
-  const CITY1 = process.env.CITY1 || "杭州市";
-  const CITY2 = process.env.CITY2 || "上海市";
-  const filterMethod = (process.env.FILTER_METHOD || "").toUpperCase(); // e.g., GET
-  const search = (process.env.SEARCH || "").toLowerCase(); // e.g., /profile
-  const outFile = process.env.OUTPUT || ""; // e.g., examples/crawler/interface.json
+  // Create crawler with new simplified API
+  const crawler = createCrawler({
+    timeout: 10000 // 10 seconds
+  });
 
-  // Load local DID doc and private JWK (from examples/did_public/generate.ts)
-  const fs = await import("node:fs/promises");
-  const path = await import("node:path");
-  const base = path.resolve(process.cwd(), "examples/did_public");
-  const didDocJson = await fs.readFile(path.join(base, "public-did-doc.json"), "utf8");
-  const pem = await fs.readFile(path.join(base, "public-private-key.pem"), "utf8");
-  const didDoc = did.DidDocumentSchema.parse(JSON.parse(didDocJson));
-  const privateKey = crypto.importSecp256k1PrivateKeyFromPem(pem);
+  // Example URL - can be overridden with env variable
+  const url = process.env.INTERFACE_URL || "https://agent-weather.xyz/.well-known/anp-interface.json";
+  
+  console.log(`Fetching interface from: ${url}`);
+  console.log();
 
-  // Pass the logger to Authenticator
-  const authenticator = Authenticator.init({ did: didDoc.id, privateKey, logger: logger.withContext({ component: "Authenticator" }) }); // <-- Pass logger
-
-  // Pass the logger to createCrawlerClient
-  const client = crawler.createClient({ logger: logger.withContext({ component: "Crawler" }) });
-  console.time("fetchInterface");
-  const spec = await client.fetchInterface(INTERFACE_URL);
-  console.timeEnd("fetchInterface");
-
-  // Optional write to file
-  if (outFile) {
-    const fs = await import("node:fs/promises");
-    await fs.mkdir(require("node:path").dirname(outFile), { recursive: true });
-    await fs.writeFile(outFile, JSON.stringify(spec, null, 2));
-    console.log("Saved interface to:", outFile);
-  }
-
-  const header = [
-    `ID: ${spec.id}`,
-    spec.version ? `Version: ${spec.version}` : undefined,
-    spec.title ? `Title: ${spec.title}` : undefined,
-    spec.description ? `Description: ${spec.description}` : undefined,
-    `Endpoint Count: ${spec.endpoints.length}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-  console.log(header);
-
-  // Filter and pretty print endpoints
-  let endpoints = spec.endpoints;
-  if (filterMethod) endpoints = endpoints.filter((e) => e.method.toUpperCase() === filterMethod);
-  if (search) endpoints = endpoints.filter((e) => e.path.toLowerCase().includes(search) || e.name.toLowerCase().includes(search));
-
-  // Group by method for readability
-  const groups = new Map<string, typeof endpoints>();
-  for (const ep of endpoints) {
-    const key = ep.method.toUpperCase();
-    const arr = groups.get(key) ?? [];
-    arr.push(ep);
-    groups.set(key, arr);
-  }
-
-  for (const [method, eps] of groups) {
-    console.log(`\n# ${method}`);
-    for (const e of eps) {
-      console.log(`- ${e.name}: ${e.path}`);
-    }
-  }
-
-  // --- Fetch Agent Description Document ---
-  console.log("\n--- Fetching Agent Description Document ---");
-  console.time("fetchAgentDescription");
-  const authHeaderDoc = await authenticator.createAuthorizationHeader(DOC_URL, "GET");
-  const docResp = await defaultHttpClient.request(DOC_URL, "GET", { headers: { Authorization: authHeaderDoc, Accept: "application/json" } });
-  console.timeEnd("fetchAgentDescription");
-  console.log("Doc status:", docResp.status);
   try {
-    console.log(JSON.stringify(docResp.data, null, 2));
-  } catch {
-    console.log(String(docResp.data));
+    // Fetch interface (Fail Fast - throws if fails)
+    const anpInterface = await crawler.fetch(url);
+
+    console.log("✅ Interface fetched successfully!");
+    console.log();
+    console.log("Agent Name:", anpInterface.name || "N/A");
+    console.log("Description:", anpInterface.description || "N/A");
+    console.log("Endpoints:", anpInterface.endpoints?.length || 0);
+    console.log();
+
+    if (anpInterface.endpoints && anpInterface.endpoints.length > 0) {
+      console.log("Available endpoints:");
+      anpInterface.endpoints.forEach((endpoint, index) => {
+        console.log(`  ${index + 1}. ${endpoint.method} ${endpoint.path}`);
+        if (endpoint.description) {
+          console.log(`     ${endpoint.description}`);
+        }
+      });
+    }
+
+    // Optional: save to file
+    const outFile = process.env.OUTPUT;
+    if (outFile) {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      await fs.mkdir(path.dirname(outFile), { recursive: true });
+      await fs.writeFile(outFile, JSON.stringify(anpInterface, null, 2));
+      console.log();
+      console.log(`💾 Saved interface to: ${outFile}`);
+    }
+
+    console.log();
+    console.log("✨ Done!");
+  } catch (error) {
+    console.error();
+    console.error("❌ Error fetching interface:");
+    console.error(`   ${(error as Error).message}`);
+    console.log();
+    console.log("💡 Tips:");
+    console.log("   - Make sure the URL is a valid ANP interface endpoint");
+    console.log("   - Check your network connection");
+    console.log("   - Try with: INTERFACE_URL=https://example.com/.well-known/anp-interface.json bun run example:crawler");
+    process.exit(1);
   }
-
-  // --- Execute Tool via JSON-RPC (maps_weather) ---
-  console.log("\n--- Executing Tool Call: maps_weather ---");
-  console.time("executeMapsWeather1");
-  const payload1 = { jsonrpc: "2.0", id: "demo1", method: "maps_weather", params: { city: CITY1 } };
-  const authHeaderRpc1 = await authenticator.createAuthorizationHeader(JSONRPC_ENDPOINT, "POST");
-  const rpc1 = await defaultHttpClient.request(JSONRPC_ENDPOINT, "POST", {
-    headers: { Authorization: authHeaderRpc1, "Content-Type": "application/json", Accept: "application/json" },
-    body: payload1,
-  });
-  console.timeEnd("executeMapsWeather1");
-  console.log(JSON.stringify(rpc1.data, null, 2));
-
-  console.log("\n--- Executing Direct JSON-RPC Call: maps_weather ---");
-  console.time("executeMapsWeather2");
-  const payload2 = { jsonrpc: "2.0", id: "demo2", method: "maps_weather", params: { city: CITY2 } };
-  const authHeaderRpc2 = await authenticator.createAuthorizationHeader(JSONRPC_ENDPOINT, "POST");
-  const rpc2 = await defaultHttpClient.request(JSONRPC_ENDPOINT, "POST", {
-    headers: { Authorization: authHeaderRpc2, "Content-Type": "application/json", Accept: "application/json" },
-    body: payload2,
-  });
-  console.timeEnd("executeMapsWeather2");
-  console.log(JSON.stringify(rpc2.data, null, 2));
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
-
-
+main().catch(console.error);

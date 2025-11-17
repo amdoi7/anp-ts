@@ -95,3 +95,20 @@ export class ConsoleLogger implements Logger {
 export class NullLogger implements Logger {
   log() { /* no-op */ }
 }
+
+export interface CreateLoggerOptions {
+  implementation?: Logger;
+  level?: LogLevel;
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Helper for creating a LogManager with optional overrides.
+ */
+export function createLogger(options: CreateLoggerOptions = {}): LogManager {
+  return new LogManager(
+    options.implementation,
+    options.level,
+    options.context
+  );
+}
